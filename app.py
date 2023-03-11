@@ -1,7 +1,10 @@
 import os
+import subprocess
+import sys
 import time
 import wave
 import torch
+import json
 import base64
 import whisper
 import datetime
@@ -15,6 +18,18 @@ from pyannote.core import Segment
 from sklearn.cluster import AgglomerativeClustering
 from pyannote.audio.pipelines.speaker_verification import PretrainedSpeakerEmbedding
 
+old_print = print
+def print_with_timestamp(*args, **kwargs):
+    # Get the current timestamp
+    timestamp = datetime.datetime.now()
+
+    # Format the timestamp as a string
+    timestamp_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+
+    # Call the built-in print function with the timestamp and the original arguments
+    old_print(f"[{timestamp_str}]", *args, **kwargs)
+print = print_with_timestamp
+
 # Init is ran on server startup
 # Load your model to GPU as a global variable here using the variable name "model"
 def init():
@@ -22,7 +37,7 @@ def init():
     global model_name
     global embedding_model
     #medium, large-v1, large-v2
-    model_name = "medium"
+    model_name = "tiny"
     model = whisper.load_model(model_name)
     embedding_model = PretrainedSpeakerEmbedding( 
         "speechbrain/spkrec-ecapa-voxceleb",
@@ -39,90 +54,9 @@ def get_youtube(video_url):
     print(abs_video_path)
     return abs_video_path
 
-def speech_to_text(video_file_path, selected_source_lang, whisper_model, num_speakers):
-    model = whisper.load_model(whisper_model)
-    time_start = time.time()
-    if(video_file_path == None):
-        raise ValueError("Error no video input")
-    print(video_file_path)
-
-    try:
-        # Read and convert youtube video
-        _,file_ending = os.path.splitext(f'{video_file_path}')
-        print(f'file enging is {file_ending}')
-        audio_file = video_file_path.replace(file_ending, ".wav")
-        print("-----starting conversion to wav-----")
-        os.system(f'ffmpeg -i "{video_file_path}" -ar 16000 -ac 1 -c:a pcm_s16le "{audio_file}"')
-        
-        # Get duration
-        with contextlib.closing(wave.open(audio_file,'r')) as f:
-            frames = f.getnframes()
-            rate = f.getframerate()
-            duration = frames / float(rate)
-        print(f"conversion to wav ready, duration of audio file: {duration}")
-
-        # Transcribe audio
-        options = dict(language=selected_source_lang, beam_size=5, best_of=5)
-        transcribe_options = dict(task="transcribe", **options)
-        result = model.transcribe(audio_file, **transcribe_options)
-        segments = result["segments"]
-        print("starting whisper done with whisper")
-    except Exception as e:
-        raise RuntimeError("Error converting video to audio")
-
-    try:
-        # Create embedding
-        def segment_embedding(segment):
-            audio = Audio()
-            start = segment["start"]
-            # Whisper overshoots the end timestamp in the last segment
-            end = min(duration, segment["end"])
-            clip = Segment(start, end)
-            waveform, sample_rate = audio.crop(audio_file, clip)
-            return embedding_model(waveform[None])
-
-        embeddings = np.zeros(shape=(len(segments), 192))
-        for i, segment in enumerate(segments):
-            embeddings[i] = segment_embedding(segment)
-        embeddings = np.nan_to_num(embeddings)
-        print(f'Embedding shape: {embeddings.shape}')
-
-        # Assign speaker label
-        clustering = AgglomerativeClustering(num_speakers).fit(embeddings)
-        labels = clustering.labels_
-        for i in range(len(segments)):
-            segments[i]["speaker"] = 'SPEAKER ' + str(labels[i] + 1)
-
-        # Make output
-        objects = {
-            'Start' : [],
-            'End': [],
-            'Speaker': [],
-            'Text': []
-        }
-        text = ''
-        for (i, segment) in enumerate(segments):
-            if i == 0 or segments[i - 1]["speaker"] != segment["speaker"]:
-                objects['Start'].append(str(convert_time(segment["start"])))
-                objects['Speaker'].append(segment["speaker"])
-                if i != 0:
-                    objects['End'].append(str(convert_time(segments[i - 1]["end"])))
-                    objects['Text'].append(text)
-                    text = ''
-            text += segment["text"] + ' '
-        objects['End'].append(str(convert_time(segments[i - 1]["end"])))
-        objects['Text'].append(text)
-        
-        time_end = time.time()
-        time_diff = time_end - time_start
-     
-        system_info = f"""-----Processing time: {time_diff:.5} seconds-----"""
-        print(system_info)
-        return pd.DataFrame(objects)
-
-    except Exception as e:
-        raise RuntimeError("Error Running inference with local model", e)
-
+def run(cmd):
+    print(f">{cmd}", file=sys.stderr)
+    subprocess.run(cmd, shell=True, check=True, stderr=subprocess.STDOUT)
 
 # Inference is ran for every server call
 # Reference your preloaded global model variable here.
@@ -147,3 +81,6 @@ def inference(model_inputs:dict) -> dict:
     # Return the results as a dictionary
     return transcription_df.to_json()
 
+if __name__ == "__main__":
+    init()
+    speech_to_text(sys.argv[1], sys.argv[2], int(sys.argv[3]))
