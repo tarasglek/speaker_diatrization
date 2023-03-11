@@ -37,8 +37,6 @@ def init():
     global model_name
     global embedding_model
     #medium, large-v1, large-v2
-    model_name = "tiny"
-    model = whisper.load_model(model_name)
     embedding_model = PretrainedSpeakerEmbedding( 
         "speechbrain/spkrec-ecapa-voxceleb",
         device=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
@@ -57,6 +55,58 @@ def get_youtube(video_url):
 def run(cmd):
     print(f">{cmd}", file=sys.stderr)
     subprocess.run(cmd, shell=True, check=True, stderr=subprocess.STDOUT)
+
+def to_wav(compresed_file, output_file):
+    # convert to wav
+    # force overwrite file
+    run(f"ffmpeg -y -i {compresed_file} -ar 16000 -ac 1 -c:a pcm_s16le {output_file}")
+
+
+def seconds(srt_time):
+    return float((srt_time.hours * 60 + srt_time.minutes) * 60 + srt_time.seconds)
+
+def speech_to_text(compressed_file, srt_filename, num_speakers):
+    audio_file = compressed_file + ".wav"
+    to_wav(compressed_file, audio_file)
+    import pysrt
+    segments = pysrt.open(srt_filename)
+    # print(sub.start,"-->",sub.end, sub.text)
+    # Get duration
+    with contextlib.closing(wave.open(audio_file,'r')) as f:
+        frames = f.getnframes()
+        rate = f.getframerate()
+        duration = frames / float(rate)
+    print(f"conversion to wav ready, duration of audio file: {duration}")
+
+
+
+
+    try:
+        # Create embedding
+        def segment_embedding(segment):
+            audio = Audio()
+            start = seconds(segment.start)
+            # Whisper overshoots the end timestamp in the last segment
+            print((duration), seconds(segment.end))
+            end = min(duration, seconds(segment.end))
+            clip = Segment(start, end)
+            waveform, sample_rate = audio.crop(audio_file, clip)
+            return embedding_model(waveform[None])
+
+        embeddings = np.zeros(shape=(len(segments), 192))
+        for i, segment in enumerate(segments):
+            embeddings[i] = segment_embedding(segment)
+        embeddings = np.nan_to_num(embeddings)
+        print(f'Embedding shape: {embeddings.shape}')
+
+        # Assign speaker label
+        clustering = AgglomerativeClustering(num_speakers).fit(embeddings)
+        labels = clustering.labels_
+        for i in range(len(segments)):
+            segments[i].text = 'SPEAKER ' + str(labels[i] + 1) + ": " + segments[i].text
+        segments.save('/tmp/out.srt', encoding='utf-8')
+    except Exception as e:
+        raise RuntimeError("Error Running inference with local model", e)
 
 # Inference is ran for every server call
 # Reference your preloaded global model variable here.
