@@ -41,7 +41,7 @@ def to_wav(compresed_file, output_file):
 def seconds(srt_time):
     return float((srt_time.hours * 60 + srt_time.minutes) * 60 + srt_time.seconds)
 
-def speech_to_text(compressed_file, srt_filename, num_speakers):
+def speaker_diatrization(compressed_file, srt_filename, num_speakers):
     embedding_model = PretrainedSpeakerEmbedding( "speechbrain/spkrec-ecapa-voxceleb", )
 
     audio_file = compressed_file + ".wav"
@@ -75,4 +75,4 @@ def speech_to_text(compressed_file, srt_filename, num_speakers):
         raise RuntimeError("Error Running inference with local model", e)
 
 if __name__ == "__main__":
-    speech_to_text(sys.argv[1], sys.argv[2], int(sys.argv[3]))
+    speaker_diatrization(sys.argv[1], sys.argv[2], int(sys.argv[3]))
