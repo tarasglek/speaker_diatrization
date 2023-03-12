@@ -22,7 +22,7 @@ def to_wav(compresed_file, output_file):
 def seconds(srt_time):
     return float((srt_time.hours * 60 + srt_time.minutes) * 60 + srt_time.seconds)
 
-def speaker_diatrization(compressed_file, srt_filename, num_speakers):
+def speaker_diatrization(compressed_file, srt_filename, num_speakers, output_file):
     embedding_model = PretrainedSpeakerEmbedding( "speechbrain/spkrec-ecapa-voxceleb", )
 
     audio_file = compressed_file + ".wav"
@@ -50,10 +50,10 @@ def speaker_diatrization(compressed_file, srt_filename, num_speakers):
         clustering = AgglomerativeClustering(num_speakers).fit(embeddings)
         labels = clustering.labels_
         for i in range(len(segments)):
-            segments[i].text = 'SPEAKER ' + str(labels[i] + 1) + ": " + segments[i].text
-        segments.save('/tmp/out.srt', encoding='utf-8')
+            segments[i].text = 'SPEAKER' + str(labels[i] + 1) + ": " + segments[i].text.strip()
+        segments.save(output_file, encoding='utf-8')
     except Exception as e:
         raise RuntimeError("Error Running inference with local model", e)
 
 if __name__ == "__main__":
-    speaker_diatrization(sys.argv[1], sys.argv[2], int(sys.argv[3]))
+    speaker_diatrization(sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4])
