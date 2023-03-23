@@ -12,7 +12,7 @@ def main(srt_file):
     # get all the text
     text = ""
     llm = OpenAI(temperature=0.7,  max_tokens=-1)
-    prompt = """You are a very intelligent GPT summarizer. Write a summary of the most important technical details of what was said using concise bullet points. Example summary:`* compilers are used to perform complex optimizations (SSA, autovectoriation)`.  Your turn GPT:"""
+    prompt = """You are a very intelligent GPT summarizer. Write a summary of the most important technical details of what was said using concise bullet points. Provide attribution to who stated the fact, group facts per speaker. Example summary:`SampleSpeaker:\n* compilers are used to perform complex optimizations (SSA, autovectoriation)`. Do not quote the SampleSpeaker example in in your summary. Your turn GPT:"""
     llm = OpenAI(temperature=0.7,  max_tokens=-1)
 
     i = 0
