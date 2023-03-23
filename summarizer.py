@@ -12,7 +12,7 @@ def main(srt_file):
     # get all the text
     text = ""
     llm = OpenAI(temperature=0.7,  max_tokens=-1)
-    prompt = """You are a very intelligent GPT summarizer. Write a summary of the most important technical details on interviewee's talk using concise bullet points. Example summary:`* compilers are used to perform complex optimizations (SSA, autovectoriation)`.  Your turn GPT:"""
+    prompt = """You are a very intelligent GPT summarizer. Write a summary of the most important technical details of what was said using concise bullet points. Example summary:`* compilers are used to perform complex optimizations (SSA, autovectoriation)`.  Your turn GPT:"""
     llm = OpenAI(temperature=0.7,  max_tokens=-1)
 
     i = 0
@@ -25,9 +25,9 @@ def main(srt_file):
             raise Exception("Too long of a segment for my algorithm to handle")
 
         text = ""
-        print(f"Completing len:{len(text_for_completion)} last_generated:{last_generated}")
-        print(last_generated)
-        response = llm(completion)
+        print(f"{last_generated}-{stop}: Summaring len:{len(text_for_completion)} ")
+        # print(last_generated)
+        response = llm(completion).strip()
         print(response)
         last_generated = stop
 

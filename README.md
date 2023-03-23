@@ -20,3 +20,5 @@ Generalize this framework to [deploy anything on Banana](https://docs.banana.dev
 <br>
 
 ## Use Banana for scale.
+docker run -ti --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -v $PWD:/workspace nvcr.io/nvidia/pytorch:22.07-py3
+pip install -r requirements.txt
