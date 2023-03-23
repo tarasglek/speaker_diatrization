@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import subprocess
 import sys
 import datetime
@@ -6,6 +7,8 @@ from pyannote.audio import Audio
 from pyannote.core import Segment
 from sklearn.cluster import AgglomerativeClustering
 from pyannote.audio.pipelines.speaker_verification import PretrainedSpeakerEmbedding
+import contextlib
+import wave
 
 def convert_time(secs):
     return datetime.timedelta(seconds=round(secs))
@@ -27,6 +30,11 @@ def speaker_diatrization(compressed_file, srt_filename, num_speakers, output_fil
 
     audio_file = compressed_file + ".wav"
     to_wav(compressed_file, audio_file)
+    with contextlib.closing(wave.open(audio_file,'r')) as f:
+        frames = f.getnframes()
+        rate = f.getframerate()
+        duration = frames / float(rate)
+    print(f"conversion to wav ready, duration of audio file: {duration}")
     import pysrt
     segments = pysrt.open(srt_filename)
 
@@ -35,7 +43,7 @@ def speaker_diatrization(compressed_file, srt_filename, num_speakers, output_fil
         def segment_embedding(segment):
             audio = Audio()
             start = seconds(segment.start)
-            end = seconds(segment.end)
+            end = min(duration, seconds(segment.end))
             clip = Segment(start, end)
             waveform, _ = audio.crop(audio_file, clip)
             return embedding_model(waveform[None])
