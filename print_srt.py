@@ -6,10 +6,12 @@ from langchain.llms import OpenAI
 import json
 
 def get_speaker(segment):
-    return segment.text.split(':')[0]
+    speaker, _, _ = segment.text.partition(':')
+    return speaker.strip() if speaker else ''
 
 def get_text(segment):
-    return segment.text.split(':')[1].strip()
+    _, _, text = segment.text.partition(':')
+    return text.strip() if text else segment.text
 
 def combine_speaker_and_text(speaker, text):
     return f"{speaker}: {text}"
