@@ -5,13 +5,24 @@ import click
 from langchain.llms import OpenAI
 import json
 
+def split_speaker_and_text(segment):
+    speaker = ''
+    text = segment.text
+    splits = text.split(':')
+    if len(splits) > 1:
+        possible_speaker = splits[0].strip()
+        if len(possible_speaker.split(' ')) < 3:
+            speaker = possible_speaker
+            text = splits[1].strip()
+    return speaker.strip(), text.strip()
+
 def get_speaker(segment):
-    speaker, _, _ = segment.text.partition(':')
-    return speaker.strip() if speaker else ''
+    speaker, text = split_speaker_and_text(segment)
+    return speaker
 
 def get_text(segment):
-    _, _, text = segment.text.partition(':')
-    return text.strip() if text else segment.text
+    speaker, text = split_speaker_and_text(segment)
+    return text
 
 def combine_speaker_and_text(speaker, text):
     return f"{speaker}: {text}"
@@ -22,8 +33,10 @@ def compress_segments(segments):
         if i > 0:
             prev_segment = segments[i - 1]
             speaker = get_speaker(segment)
-            if prev_segment.end == segment.start and get_speaker(prev_segment) == speaker:
-                prev_segment.text = combine_speaker_and_text(speaker, get_text(prev_segment) + get_text(segment))
+            compress = prev_segment.end == segment.start and get_speaker(prev_segment) == speaker
+            print(compress, prev_segment.end, segment.start, json.dumps([get_speaker(prev_segment), speaker]))
+            if compress:
+                prev_segment.text = combine_speaker_and_text(speaker, get_text(prev_segment) + ' ' + get_text(segment))
                 prev_segment.end = segment.end
                 segments.pop(i)
                 continue

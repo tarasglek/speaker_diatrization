@@ -1,24 +1,5 @@
-
-# 🍌 Banana Serverless
-
-This repo provides a basic template for using Whisper medium on Banana's serverless GPU platform. Ready for 1-Click deploy. Based on the huggingface [gradio found here](https://huggingface.co/spaces/vumichien/whisper-speaker-diarization).
-
-![demo input image](https://github.com/lucataco/serverless-template-whisper-speaker-diarization/blob/main/whisper.jpg?raw=true)
-
-# Quickstart
-**[Follow the quickstart guide in Banana's documentation to use this repo](https://docs.banana.dev/banana-docs/quickstart).** 
-
-*(choose "GitHub Repository" deployment method)*
-
-<br>
-
-# Helpful Links
-Understand the 🍌 [Serverless framework](https://docs.banana.dev/banana-docs/core-concepts/inference-server/serverless-framework) and functionality of each file within it.
-
-Generalize this framework to [deploy anything on Banana](https://docs.banana.dev/banana-docs/resources/how-to-serve-anything-on-banana).
-
-<br>
-
-## Use Banana for scale.
-docker run -ti --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -v $PWD:/workspace nvcr.io/nvidia/pytorch:22.07-py3
-pip install -r requirements.txt
+conda activate python-3.10
+conda install -c conda-forge hmmlearn
+virtualenv -p python3.10 .venv --system-site-packages
+uvicorn api:app --reload
+curl -X GET "http://localhost:8000/speaker_diatrization?compressed_file=meeting.mp4&srt_filename=meeting.srt&num_speakers=2"
